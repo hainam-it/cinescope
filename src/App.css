@@ -588,3 +588,69 @@ a { color: inherit; text-decoration: none; }
   
   .auth-modal { padding: 32px 20px; border-radius: 16px; }
 }
+/* --- TỐI ƯU GIAO DIỆN TRÊN ĐIỆN THOẠI & MÀN HÌNH NHỎ --- */
+@media screen and (max-width: 768px) {
+  /* Khóa cứng body và các container chính không bị tràn màn hình ngang */
+  body, html {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  /* Header / Navbar thu gọn lại */
+  .navbar {
+    padding: 10px 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .navbar-search {
+    width: 100%;
+    order: 3; /* Đẩy thanh tìm kiếm xuống dòng dưới cho gọn */
+  }
+
+  /* Hero Section (Banner chính) co lại vừa vặn màn hình điện thoại */
+  .hero {
+    height: 70vh;
+    min-height: 450px;
+    padding: 20px;
+  }
+
+  .hero-copy {
+    max-width: 100%;
+    padding-bottom: 20px;
+  }
+
+  .hero-copy h1 {
+    font-size: 1.8rem; /* Giảm kích thước chữ tiêu đề to cho khỏi tràn */
+    line-height: 1.2;
+  }
+
+  .hero-copy p {
+    font-size: 0.9rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 3; /* Giới hạn mô tả 3 dòng trên mobile */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Cụm Thumbnail bên dưới banner thu nhỏ lại */
+  .hero-thumbnails {
+    display: none; /* Ẩn bớt thumbnail trên màn hình quá nhỏ để đỡ rối, hoặc thu nhỏ lại */
+  }
+
+  /* Danh sách phim dạng lưới (Grid) chuyển về 2 cột trên điện thoại */
+  .movie-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px;
+    padding: 10px;
+  }
+
+  /* Modal xem phim / Popup đăng nhập căn chỉnh lại vừa khung màn hình điện thoại */
+  .modal-content, .auth-modal {
+    width: 90% !important;
+    max-width: 100% !important;
+    margin: 10px auto;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+}
