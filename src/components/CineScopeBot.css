@@ -1,0 +1,682 @@
+.cinescope-bot-root {
+  --cine-blue: #5c78f6;
+  --cine-blue-dark: #405ce0;
+  --cine-text: #222943;
+  --cine-muted: #8a91a8;
+  --cine-border: #edf0f8;
+
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+}
+
+/* Bong bóng bot nổi */
+.cine-bot-launcher {
+  position: fixed;
+  z-index: 10001;
+  width: 66px;
+  height: 66px;
+  padding: 0;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #f4f6ff, #cbd5ff);
+  box-shadow: 0 8px 28px rgba(60, 81, 180, 0.28);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.cine-bot-launcher:hover {
+  box-shadow: 0 12px 32px rgba(60, 81, 180, 0.38);
+  transform: translateY(-2px);
+}
+
+.cine-bot-launcher.dragging {
+  cursor: grabbing;
+  transition: none;
+}
+
+.cine-launcher-face {
+  position: absolute;
+  top: 13px;
+  left: 12px;
+  width: 39px;
+  height: 39px;
+  display: block;
+  border: 2px solid #fff;
+  border-radius: 43% 43% 48% 48%;
+  background: linear-gradient(150deg, #fff, #e8edff);
+  box-shadow: inset 0 -3px 5px rgba(95, 119, 224, 0.12);
+}
+
+.cine-face-eyes {
+  position: absolute;
+  top: 12px;
+  left: 8px;
+  display: flex;
+  gap: 12px;
+}
+
+.cine-face-eyes i {
+  width: 4px;
+  height: 6px;
+  border-radius: 50%;
+  background: #384775;
+}
+
+.cine-face-blush {
+  position: absolute;
+  top: 21px;
+  left: 3px;
+  display: flex;
+  width: 29px;
+  justify-content: space-between;
+}
+
+.cine-face-blush i {
+  width: 7px;
+  height: 4px;
+  border-radius: 50%;
+  background: #ffabbf;
+}
+
+.cine-face-mouth {
+  position: absolute;
+  left: 17px;
+  top: 22px;
+  width: 5px;
+  height: 3px;
+  border-bottom: 1.5px solid #384775;
+  border-radius: 50%;
+}
+
+.cine-launcher-popcorn {
+  position: absolute;
+  right: -7px;
+  bottom: -5px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: #fff4d8;
+  font-size: 15px;
+  box-shadow: 0 3px 8px #3c51b422;
+}
+
+.cine-launcher-notification {
+  position: absolute;
+  top: -5px;
+  right: -4px;
+  display: grid;
+  width: 21px;
+  height: 21px;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #ff6688;
+  color: white;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* Khung chat */
+.cine-chat-window {
+  position: fixed;
+  z-index: 10000;
+  right: 24px;
+  bottom: 100px;
+  display: flex;
+  flex-direction: column;
+  width: min(370px, calc(100vw - 28px));
+  height: min(590px, calc(100dvh - 130px));
+  min-height: 350px;
+  overflow: hidden;
+  border: 1px solid rgba(230, 234, 251, 0.95);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 18px 65px rgba(29, 40, 93, 0.2);
+  animation: cine-chat-enter 0.24s ease-out;
+}
+
+@keyframes cine-chat-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Header */
+.cine-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 16px;
+  background: linear-gradient(120deg, #647ef8, #8b9bff);
+  color: white;
+}
+
+.cine-bot-avatar {
+  position: relative;
+  display: grid;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 15px;
+  background: #ffffff;
+  font-size: 23px;
+}
+
+.cine-online-dot {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 11px;
+  height: 11px;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: #43d6a2;
+}
+
+.cine-chat-heading {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cine-chat-heading strong {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.cine-chat-heading span {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 11px;
+}
+
+.cine-header-button {
+  display: grid;
+  flex: 0 0 29px;
+  width: 29px;
+  height: 29px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.13);
+  color: white;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.cine-header-button:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Lời giới thiệu */
+.cine-chat-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 15px 16px;
+  border-bottom: 1px solid var(--cine-border);
+  background: #fafbff;
+}
+
+.cine-intro-sparkle {
+  display: grid;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 9px;
+  background: #e9edff;
+  color: var(--cine-blue);
+}
+
+.cine-chat-intro strong {
+  color: var(--cine-text);
+  font-size: 12px;
+}
+
+.cine-chat-intro p {
+  margin: 5px 0 0;
+  color: #858ba1;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+/* Tin nhắn */
+.cine-chat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 13px;
+  background:
+    radial-gradient(circle at 100% 0%, #f2f4ff 0, transparent 30%),
+    #fff;
+  scroll-behavior: smooth;
+}
+
+.cine-chat-messages::-webkit-scrollbar {
+  width: 5px;
+}
+
+.cine-chat-messages::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  background: #dce1f2;
+}
+
+.cine-message-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  margin-bottom: 13px;
+}
+
+.cine-message-row.user {
+  justify-content: flex-end;
+}
+
+.cine-message-avatar {
+  display: grid;
+  flex: 0 0 27px;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border-radius: 10px;
+  background: #eef1ff;
+  font-size: 15px;
+}
+
+.cine-message-bubble {
+  max-width: 83%;
+  padding: 11px 12px;
+  border-radius: 15px 15px 15px 4px;
+  background: #f0f2fa;
+  color: #424962;
+  font-size: 12px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.cine-message-row.user .cine-message-bubble {
+  border-radius: 15px 15px 4px 15px;
+  background: var(--cine-blue);
+  color: white;
+}
+
+/* Gợi ý câu hỏi */
+.cine-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 2px 0 16px 34px;
+}
+
+.cine-suggestions-label {
+  margin-bottom: 2px;
+  color: #9ba1b6;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.1px;
+}
+
+.cine-suggestions button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 11px;
+  border: 1px solid #e6eaff;
+  border-radius: 11px;
+  background: #fff;
+  color: #5265c3;
+  text-align: left;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.cine-suggestions button:hover {
+  border-color: #b9c5ff;
+  background: #f4f6ff;
+}
+
+.cine-suggestions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cine-suggestions button span {
+  font-size: 14px;
+}
+
+/* Hiệu ứng đang nhập */
+.cine-typing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #f0f2fa;
+}
+
+.cine-typing > span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #8191e9;
+  animation: cine-typing-bounce 0.8s infinite alternate;
+}
+
+.cine-typing > span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.cine-typing > span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.cine-typing small {
+  margin-left: 5px;
+  color: #737b96;
+  font-size: 10px;
+}
+
+@keyframes cine-typing-bounce {
+  to {
+    opacity: 0.35;
+    transform: translateY(-4px);
+  }
+}
+
+.cine-error-message {
+  margin: 8px 0;
+  padding: 10px;
+  border: 1px solid #ffd7de;
+  border-radius: 10px;
+  background: #fff3f5;
+  color: #bd3e58;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+/* Kết quả phim */
+.cine-results {
+  margin: 12px 0 10px 33px;
+}
+
+.cine-results-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+
+.cine-results-heading strong {
+  color: var(--cine-text);
+  font-size: 12px;
+}
+
+.cine-results-heading > span {
+  color: #8a91a8;
+  font-size: 10px;
+}
+
+.cine-result-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 8px;
+  border: 1px solid #eceffc;
+  border-radius: 12px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.18s ease, transform 0.18s ease;
+}
+
+.cine-result-card:hover {
+  transform: translateY(-1px);
+  border-color: #b9c5ff;
+}
+
+.cine-result-card img {
+  flex: 0 0 48px;
+  width: 48px;
+  height: 66px;
+  border-radius: 7px;
+  background: #eef0f8;
+  object-fit: cover;
+}
+
+.cine-result-info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.cine-result-info strong {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #303750;
+  font-size: 11px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.cine-result-info small {
+  overflow: hidden;
+  color: #888fa5;
+  font-size: 9px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cine-result-rating {
+  color: #e5a42c;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.cine-result-arrow {
+  color: #8997e7;
+  font-size: 16px;
+}
+
+.cine-empty-results {
+  color: #777f97;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.cine-more-results {
+  margin: 8px 0;
+  color: #8b92a7;
+  font-size: 10px;
+  text-align: center;
+}
+
+/* Ô nhập */
+.cine-chat-footer {
+  padding: 12px 13px 9px;
+  border-top: 1px solid var(--cine-border);
+  background: white;
+}
+
+.cine-chat-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px;
+  border: 1px solid #e5e9f6;
+  border-radius: 14px;
+  background: #f8f9fd;
+}
+
+.cine-chat-form:focus-within {
+  border-color: #aab7ff;
+  box-shadow: 0 0 0 3px rgba(92, 120, 246, 0.08);
+}
+
+.cine-chat-form input {
+  flex: 1;
+  width: 0;
+  min-width: 0;
+  padding: 9px 7px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #303750;
+  font: inherit;
+  font-size: 11px;
+}
+
+.cine-chat-form input::placeholder {
+  color: #a1a6b7;
+}
+
+.cine-chat-form button {
+  display: grid;
+  flex: 0 0 35px;
+  width: 35px;
+  height: 35px;
+  place-items: center;
+  border: none;
+  border-radius: 11px;
+  background: var(--cine-blue);
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.cine-chat-form button:hover:not(:disabled) {
+  background: var(--cine-blue-dark);
+}
+
+.cine-chat-form button:disabled {
+  background: #cbd1e6;
+  cursor: not-allowed;
+}
+
+.cine-chat-form button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cine-chat-disclaimer {
+  margin: 8px 0 0;
+  color: #a2a7b8;
+  font-size: 9px;
+  text-align: center;
+}
+
+/* Bong bóng chào */
+.cine-welcome-bubble {
+  position: fixed;
+  z-index: 10000;
+  right: 98px;
+  bottom: 33px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 190px;
+  padding: 15px;
+  border: 1px solid #e8ebfa;
+  border-radius: 15px 15px 3px 15px;
+  background: white;
+  box-shadow: 0 8px 30px rgba(29, 40, 93, 0.14);
+  animation: cine-chat-enter 0.22s ease-out;
+}
+
+.cine-welcome-bubble strong {
+  color: #333c5b;
+  font-size: 12px;
+}
+
+.cine-welcome-bubble span {
+  color: #858ba1;
+  font-size: 11px;
+}
+
+.cine-welcome-bubble > button {
+  position: absolute;
+  top: 5px;
+  right: 7px;
+  border: none;
+  background: none;
+  color: #8c92a7;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+/* Màn hình điện thoại */
+@media (max-width: 480px) {
+  .cine-chat-window {
+    right: 10px;
+    bottom: 91px;
+    width: calc(100vw - 20px);
+    height: min(570px, calc(100dvh - 115px));
+    min-height: 320px;
+    border-radius: 19px;
+  }
+
+  .cine-bot-launcher {
+    width: 60px;
+    height: 60px;
+  }
+
+  .cine-launcher-face {
+    top: 10px;
+    left: 9px;
+  }
+
+  .cine-welcome-bubble {
+    right: 85px;
+    bottom: 27px;
+  }
+
+  .cine-chat-header {
+    padding: 13px;
+  }
+
+  .cine-chat-intro {
+    padding: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cine-chat-window,
+  .cine-welcome-bubble,
+  .cine-typing > span {
+    animation: none;
+  }
+
+  .cine-bot-launcher,
+  .cine-result-card,
+  .cine-suggestions button {
+    transition: none;
+  }
+}
