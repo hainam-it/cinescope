@@ -33,15 +33,7 @@ const MoviePlayer = forwardRef<HTMLDivElement, MoviePlayerProps>(({ movie, onClo
 
   return (
     <div ref={ref} className="movie-player-container-large">
-      <div className="player-top-bar-clean">
-        <div className="now-playing-info">
-          <h3>Đang phát: {movie.title}</h3>
-          <span>{movie.year} • {movie.genres.join(', ')}</span>
-        </div>
-        <button className="close-fullscreen-player" onClick={onClose}>
-          ✕ Đóng trình phát
-        </button>
-      </div>
+
 
       <div className="large-video-frame">
         <iframe
