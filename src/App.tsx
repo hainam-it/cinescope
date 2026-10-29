@@ -705,7 +705,6 @@ export default function App() {
 
               <MoviePlayer
                 movie={selectedMovie}
-                onClose={closePlayer}
               />
 
               <section className="watch-recommendations">
