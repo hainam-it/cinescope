@@ -113,6 +113,13 @@ export default function MovieReviews({ movieId, user }: MovieReviewsProps) {
     }
 
     setSaving(true)
+    // Firestore applies local writes immediately, but the promise can remain pending
+    // if the device is offline or the backend acknowledgement is delayed.
+    const pendingTimer = window.setTimeout(() => {
+      setSaving(false)
+      setNotice('Bình luận đang chờ đồng bộ. Nếu chưa xuất hiện trên thiết bị khác, hãy kiểm tra kết nối và cấu hình Firestore.')
+    }, 10000)
+
     try {
       await setDoc(
         doc(db, 'movies', String(movieId), 'reviews', user.uid),
@@ -129,6 +136,7 @@ export default function MovieReviews({ movieId, user }: MovieReviewsProps) {
       console.error('Không gửi được đánh giá:', submitError)
       setError('Không gửi được. Hãy kiểm tra Firestore Rules và thử lại.')
     } finally {
+      window.clearTimeout(pendingTimer)
       setSaving(false)
     }
   }
