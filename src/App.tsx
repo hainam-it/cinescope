@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   onAuthStateChanged,
@@ -13,6 +12,7 @@ import { auth } from './firebase'
 import movieData from './data/movies.json'
 import MoviePlayer from './components/MoviePlayer'
 import MovieDetailTabs from './components/MovieDetailTabs'
+import MovieReviews from './components/MovieReviews'
 import CineScopeBot from './components/CineScopeBot'
 import './App.css'
 
@@ -85,7 +85,8 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null)
   const [search, setSearch] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
-  const [pendingScrollMovieId, setPendingScrollMovieId] = useState<number | null>(null)
+  const [pendingScrollMovieId, setPendingScrollMovieId] =
+    useState<number | null>(null)
   const [selectedGenre, setSelectedGenre] = useState('')
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null)
   const [activeHero, setActiveHero] = useState(0)
@@ -116,6 +117,19 @@ export default function App() {
     return () => window.clearInterval(timer)
   }, [])
 
+  useEffect(() => {
+    if (!isWatching || !selectedMovie) return
+
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById('movie-watch-page')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [isWatching, selectedMovie])
+
   const heroMovie = featured[activeHero] ?? movies[0]
 
   const allGenres = useMemo(
@@ -133,16 +147,18 @@ export default function App() {
         movie.overview,
         ...movie.genres,
         ...movie.cast,
-      ].join(' ').toLocaleLowerCase('vi')
+      ]
+        .join(' ')
+        .toLocaleLowerCase('vi')
 
       const matchesSearch = !query || searchableText.includes(query)
 
       const matchesGenre =
         !selectedGenre ||
         movie.genres.some((genre) =>
-          genre.toLocaleLowerCase('vi').includes(
-            selectedGenre.toLocaleLowerCase('vi'),
-          ),
+          genre
+            .toLocaleLowerCase('vi')
+            .includes(selectedGenre.toLocaleLowerCase('vi')),
         )
 
       const matchesWatchlist =
@@ -250,7 +266,10 @@ export default function App() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messages: [...history, { role: 'user', content: prompt }].slice(-12),
+        messages: [
+          ...history,
+          { role: 'user', content: prompt },
+        ].slice(-12),
         movies: movies.slice(0, 100).map((movie) => ({
           id: movie.id,
           title: movie.title,
@@ -275,8 +294,8 @@ export default function App() {
 
     const recommendedMovies = Array.isArray(data.movieIds)
       ? data.movieIds
-          .map((id) => movies.find((movie) => movie.id === id))
-          .filter((movie): movie is Movie => Boolean(movie))
+        .map((id) => movies.find((movie) => movie.id === id))
+        .filter((movie): movie is Movie => Boolean(movie))
       : []
 
     return {
@@ -332,7 +351,7 @@ export default function App() {
 
       setAuthError(
         messages[code || ''] ||
-          'Không thể đăng nhập. Anh kiểm tra thông tin nhé.',
+        'Không thể đăng nhập. Anh kiểm tra thông tin nhé.',
       )
     } finally {
       setAuthBusy(false)
@@ -347,6 +366,14 @@ export default function App() {
     }
 
     setIsWatching(true)
+  }
+
+  const closePlayer = () => {
+    setIsWatching(false)
+
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    })
   }
 
   if (!movies.length) {
@@ -381,9 +408,14 @@ export default function App() {
 
         <nav className="nav-links">
           <button
-            className={!selectedGenre && !showWatchlist ? 'nav-item active' : 'nav-item'}
+            className={
+              !selectedGenre && !showWatchlist
+                ? 'nav-item active'
+                : 'nav-item'
+            }
             onClick={() => {
               setSelectedMovie(null)
+              setIsWatching(false)
               setShowWatchlist(false)
               setSelectedGenre('')
               setSearch('')
@@ -398,6 +430,7 @@ export default function App() {
             className="nav-item"
             onClick={() => {
               setSelectedMovie(null)
+              setIsWatching(false)
               setSearchFocused(false)
               document
                 .getElementById('movies')
@@ -409,14 +442,22 @@ export default function App() {
 
           <button
             className={showWatchlist ? 'nav-item active' : 'nav-item'}
+
             onClick={() => {
               setSelectedMovie(null)
+              setIsWatching(false)
               setShowWatchlist(true)
+              setSelectedGenre('')
+              setSearch('')
               setSearchFocused(false)
-              document
-                .getElementById('movies')
-                ?.scrollIntoView({ behavior: 'smooth' })
+
+              window.setTimeout(() => {
+                document
+                  .getElementById('movies')
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }, 100)
             }}
+
           >
             Danh sách của tôi
           </button>
@@ -437,12 +478,13 @@ export default function App() {
                   setSearch(event.target.value)
                   setShowWatchlist(false)
                   setSelectedMovie(null)
+                  setIsWatching(false)
                   setSearchFocused(true)
                 }}
                 onKeyDown={(event) => {
                   if (event.key === 'Escape') {
                     setSearchFocused(false)
-                    ;(event.target as HTMLInputElement).blur()
+                      ; (event.target as HTMLInputElement).blur()
                   }
 
                   if (
@@ -545,94 +587,163 @@ export default function App() {
 
       {selectedMovie ? (
         <section className="movie-detail-page">
-          <div
-            className="detail-hero-backdrop"
-            style={{
-              backgroundImage: `url("${selectedMovie.backdrop}")`,
-            }}
-          >
-            <div className="detail-gradient-overlay" />
+          {!isWatching && (
+            <>
+              <div
+                className="detail-hero-backdrop"
+                style={{
+                  backgroundImage: `url("${selectedMovie.backdrop}")`,
+                }}
+              >
+                <div className="detail-gradient-overlay" />
 
-            <div className="detail-content-wrapper">
-              <span className="eyebrow">CINESCOPE FEATURED MOVIE</span>
-              <h1 className="detail-title">{selectedMovie.title}</h1>
+                <div className="detail-content-wrapper">
+                  <span className="eyebrow">
+                    CINESCOPE FEATURED MOVIE
+                  </span>
+                  <h1 className="detail-title">
+                    {selectedMovie.title}
+                  </h1>
 
-              <div className="detail-meta-row">
-                <span className="rating-tag">
-                  ★ {selectedMovie.rating.toFixed(1)}
-                </span>
-                <span>{selectedMovie.year}</span>
-                {selectedMovie.runtime > 0 && (
-                  <span>{selectedMovie.runtime} phút</span>
-                )}
-              </div>
+                  <div className="detail-meta-row">
+                    <span className="rating-tag">
+                      ★ {selectedMovie.rating.toFixed(1)}
+                    </span>
+                    <span>{selectedMovie.year}</span>
+                    {selectedMovie.runtime > 0 && (
+                      <span>{selectedMovie.runtime} phút</span>
+                    )}
+                  </div>
 
-              <p className="detail-overview">
-                {selectedMovie.overview}
-              </p>
-
-              <div className="detail-actions">
-                <button
-                  className="watch-button"
-                  onClick={handleStartWatching}
-                >
-                  ▶ Xem phim ngay
-                </button>
-
-                <button
-                  className={
-                    watchlist.includes(selectedMovie.id)
-                      ? 'round-button saved'
-                      : 'round-button'
-                  }
-                  onClick={() => toggleWatchlist(selectedMovie.id)}
-                  aria-label="Lưu phim"
-                >
-                  {watchlist.includes(selectedMovie.id) ? '♥' : '♡'}
-                </button>
-
-                <button
-                  className="back-to-home-btn"
-                  onClick={() => {
-                    setSelectedMovie(null)
-                    setIsWatching(false)
-                  }}
-                >
-                  Quay lại
-                </button>
-              </div>
-
-              <div className="detail-extra-info">
-                <p>
-                  <strong>Thể loại:</strong>{' '}
-                  {selectedMovie.genres.join(' · ')}
-                </p>
-                {selectedMovie.directors.length > 0 && (
-                  <p>
-                    <strong>Đạo diễn:</strong>{' '}
-                    {selectedMovie.directors.join(', ')}
+                  <p className="detail-overview">
+                    {selectedMovie.overview}
                   </p>
-                )}
-                {selectedMovie.cast.length > 0 && (
-                  <p>
-                    <strong>Diễn viên:</strong>{' '}
-                    {selectedMovie.cast.join(', ')}
-                  </p>
-                )}
+
+                  <div className="detail-actions">
+                    <button
+                      className="watch-button"
+                      onClick={handleStartWatching}
+                    >
+                      ▶ Xem phim ngay
+                    </button>
+
+                    <button
+                      className={
+                        watchlist.includes(selectedMovie.id)
+                          ? 'round-button saved'
+                          : 'round-button'
+                      }
+                      onClick={() => toggleWatchlist(selectedMovie.id)}
+                      aria-label="Lưu phim"
+                    >
+                      {watchlist.includes(selectedMovie.id) ? '♥' : '♡'}
+                    </button>
+
+                    <button
+                      className="back-to-home-btn"
+                      onClick={() => {
+                        setSelectedMovie(null)
+                        setIsWatching(false)
+                        window.scrollTo({ top: 0, behavior: 'smooth' })
+                      }}
+                    >
+                      Quay lại
+                    </button>
+                  </div>
+
+                  <div className="detail-extra-info">
+                    <p>
+                      <strong>Thể loại:</strong>{' '}
+                      {selectedMovie.genres.join(' · ')}
+                    </p>
+
+                    {selectedMovie.directors.length > 0 && (
+                      <p>
+                        <strong>Đạo diễn:</strong>{' '}
+                        {selectedMovie.directors.join(', ')}
+                      </p>
+                    )}
+
+                    {selectedMovie.cast.length > 0 && (
+                      <p>
+                        <strong>Diễn viên:</strong>{' '}
+                        {selectedMovie.cast.join(', ')}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+
+              <MovieDetailTabs movie={selectedMovie} user={user} />
+            </>
+          )}
 
           {isWatching && (
-            <div className="movie-player-section-wrapper">
+            <div
+              id="movie-watch-page"
+              className="movie-watch-page"
+              key={selectedMovie.id}
+            >
+              <div className="watch-page-heading">
+                <div>
+                  <p className="eyebrow">CINESCOPE PLAYER</p>
+                  <h1>{selectedMovie.title}</h1>
+                  <p>
+                    {selectedMovie.year}
+                    {' · '}
+                    {selectedMovie.genres.join(' · ')}
+                  </p>
+                </div>
+
+                <button
+                  className="back-to-home-btn watch-back-button"
+                  onClick={closePlayer}
+                >
+                  ← Quay lại chi tiết
+                </button>
+              </div>
+
               <MoviePlayer
                 movie={selectedMovie}
-                onClose={() => setIsWatching(false)}
+                onClose={closePlayer}
+              />
+
+              <section className="watch-recommendations">
+                <div className="section-topline">
+                  <div>
+                    <p className="eyebrow">TIẾP TỤC KHÁM PHÁ</p>
+                    <h2>Phim có thể anh sẽ thích</h2>
+                  </div>
+                </div>
+
+                <div className="movie-grid">
+                  {movies
+                    .filter(
+                      (movie) =>
+                        movie.id !== selectedMovie.id &&
+                        movie.genres.some((genre) =>
+                          selectedMovie.genres.includes(genre),
+                        ),
+                    )
+                    .slice(0, 6)
+                    .map((movie) => (
+                      <MovieCard
+                        key={movie.id}
+                        movie={movie}
+                        saved={watchlist.includes(movie.id)}
+                        onSelect={selectMovie}
+                        onToggleSave={toggleWatchlist}
+                      />
+                    ))}
+                </div>
+              </section>
+
+              <MovieReviews
+                movieId={selectedMovie.id}
+                user={user}
               />
             </div>
           )}
-
-          <MovieDetailTabs movie={selectedMovie} user={user} />
         </section>
       ) : (
         <>
@@ -731,7 +842,9 @@ export default function App() {
 
             <div className="genre-pills">
               <button
-                className={!selectedGenre ? 'genre-pill active' : 'genre-pill'}
+                className={
+                  !selectedGenre ? 'genre-pill active' : 'genre-pill'
+                }
                 onClick={() => setSelectedGenre('')}
               >
                 Tất cả
@@ -784,9 +897,24 @@ export default function App() {
                     ? 'watchlist-filter active'
                     : 'watchlist-filter'
                 }
-                onClick={() => setShowWatchlist((current) => !current)}
+
+                onClick={() => {
+                  setSelectedMovie(null)
+                  setIsWatching(false)
+                  setShowWatchlist((current) => !current)
+                  setSearchFocused(false)
+
+                  window.setTimeout(() => {
+                    document
+                      .getElementById('movies')
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }, 100)
+                }}
+
               >
-                {showWatchlist ? '✓ Đang xem phim đã lưu' : '♡ Phim đã lưu'}
+                {showWatchlist
+                  ? '✓ Đang xem phim đã lưu'
+                  : '♡ Phim đã lưu'}
               </button>
             </div>
 
@@ -918,7 +1046,9 @@ export default function App() {
                 <input
                   type="password"
                   value={authPassword}
-                  onChange={(event) => setAuthPassword(event.target.value)}
+                  onChange={(event) =>
+                    setAuthPassword(event.target.value)
+                  }
                   placeholder="Ít nhất 6 ký tự"
                   minLength={6}
                   required
@@ -974,10 +1104,7 @@ function MovieCard({
   onToggleSave: (id: number) => void
 }) {
   return (
-    <article
-      className="movie-card"
-      id={`movie-card-${movie.id}`}
-    >
+    <article className="movie-card" id={`movie-card-${movie.id}`}>
       <button
         className="poster-button"
         onClick={() => onSelect(movie)}
