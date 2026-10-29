@@ -12,6 +12,7 @@ import {
 import { auth } from './firebase'
 import movieData from './data/movies.json'
 import MoviePlayer from './components/MoviePlayer'
+import MovieDetailTabs from './components/MovieDetailTabs'
 import CineScopeBot from './components/CineScopeBot'
 import './App.css'
 
@@ -630,6 +631,8 @@ export default function App() {
               />
             </div>
           )}
+
+          <MovieDetailTabs movie={selectedMovie} user={user} />
         </section>
       ) : (
         <>
