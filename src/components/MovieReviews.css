@@ -1,5 +1,6 @@
 .movie-reviews {
-  width: min(100% - 2 * var(--page-padding), 1280px);
+  width: calc(100% - 48px);
+  max-width: 1280px;
   margin: 36px auto 64px;
   padding: clamp(18px, 3vw, 30px);
   border: 1px solid var(--line);
