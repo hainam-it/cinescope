@@ -2157,3 +2157,92 @@ button {
     gap: 18px;
   }
 }
+
+/* Focused playback view: hide the movie introduction while watching. */
+.movie-watching-page {
+  width: calc(100% - 48px);
+  max-width: 1280px;
+  min-height: 60vh;
+  margin: 28px auto 64px;
+}
+
+.watching-page-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 22px;
+  margin-bottom: 18px;
+}
+
+.watching-page-header > div {
+  min-width: 0;
+}
+
+.watching-back-button {
+  flex-shrink: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .05);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.watching-back-button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.watching-eyebrow {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+
+.watching-page-header h1 {
+  margin: 5px 0;
+  color: var(--text);
+  font-size: clamp(22px, 3vw, 34px);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.watching-page-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.movie-watching-page .movie-player-section-wrapper {
+  width: 100%;
+  margin: 0;
+}
+
+.movie-watching-page .movie-player-container-large {
+  max-width: none;
+  margin: 0;
+}
+
+.movie-watching-page .movie-reviews {
+  width: 100%;
+  max-width: none;
+  margin: 24px 0 0;
+}
+
+@media (max-width: 700px) {
+  .movie-watching-page {
+    width: calc(100% - 24px);
+    margin: 18px auto 40px;
+  }
+
+  .watching-page-header {
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .watching-back-button {
+    min-height: 42px;
+  }
+}
