@@ -13,6 +13,7 @@ import { auth } from './firebase'
 import movieData from './data/movies.json'
 import MoviePlayer from './components/MoviePlayer'
 import MovieDetailTabs from './components/MovieDetailTabs'
+import MovieReviews from './components/MovieReviews'
 import CineScopeBot from './components/CineScopeBot'
 import './App.css'
 
@@ -544,6 +545,31 @@ export default function App() {
       </header>
 
       {selectedMovie ? (
+        isWatching ? (
+          <section className="movie-watching-page">
+            <div className="watching-page-header">
+              <button
+                type="button"
+                className="watching-back-button"
+                onClick={() => setIsWatching(false)}
+              >
+                ← Quay lại thông tin phim
+              </button>
+              <div>
+                <span className="watching-eyebrow">ĐANG PHÁT</span>
+                <h1>{selectedMovie.title}</h1>
+                <p>{selectedMovie.year} · {selectedMovie.genres.join(' · ')}</p>
+              </div>
+            </div>
+            <div className="movie-player-section-wrapper">
+              <MoviePlayer
+                movie={selectedMovie}
+                onClose={() => setIsWatching(false)}
+              />
+            </div>
+            <MovieReviews movieId={selectedMovie.id} user={user} />
+          </section>
+        ) : (
         <section className="movie-detail-page">
           <div
             className="detail-hero-backdrop"
@@ -623,17 +649,10 @@ export default function App() {
             </div>
           </div>
 
-          {isWatching && (
-            <div className="movie-player-section-wrapper">
-              <MoviePlayer
-                movie={selectedMovie}
-                onClose={() => setIsWatching(false)}
-              />
-            </div>
-          )}
-
           <MovieDetailTabs movie={selectedMovie} user={user} />
         </section>
+
+        )
       ) : (
         <>
           <section className="hero" id="hero">
