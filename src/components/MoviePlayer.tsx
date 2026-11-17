@@ -15,20 +15,23 @@ type MoviePlayerProps = {
   movie: Movie
 }
 
-type SourceType = 'vidsrc' | 'embed2'
+type SourceType = 'videm' | 'vidsrc'
 
 const MoviePlayer = forwardRef<HTMLDivElement, MoviePlayerProps>(
   ({ movie }, ref) => {
-    const [sourceType, setSourceType] = useState<SourceType>('vidsrc')
+    // Mặc định sử dụng server Videm
+    const [sourceType, setSourceType] = useState<SourceType>('videm')
 
     const getEmbedUrl = (id: number, type: SourceType) => {
       switch (type) {
+        case 'videm':
+          return `https://videm.buzz/embed/movie/${id}`
+
         case 'vidsrc':
           return `https://vidsrc.to/embed/movie/${id}`
-        case 'embed2':
-          return `https://www.2embed.cc/embed/${id}`
+
         default:
-          return `https://vidsrc.to/embed/movie/${id}`
+          return `https://videm.buzz/embed/movie/${id}`
       }
     }
 
@@ -39,6 +42,7 @@ const MoviePlayer = forwardRef<HTMLDivElement, MoviePlayerProps>(
       >
         <div className="large-video-frame">
           <iframe
+            key={`${sourceType}-${movie.id}`}
             src={getEmbedUrl(movie.id, sourceType)}
             title={movie.title}
             width="100%"
@@ -56,21 +60,23 @@ const MoviePlayer = forwardRef<HTMLDivElement, MoviePlayerProps>(
 
           <div className="toolbar-pills">
             <button
+              type="button"
+              className={`source-pill-item ${
+                sourceType === 'videm' ? 'active' : ''
+              }`}
+              onClick={() => setSourceType('videm')}
+            >
+              Nguồn 1 (Videm)
+            </button>
+
+            <button
+              type="button"
               className={`source-pill-item ${
                 sourceType === 'vidsrc' ? 'active' : ''
               }`}
               onClick={() => setSourceType('vidsrc')}
             >
-              Nguồn 1 (VidSrc)
-            </button>
-
-            <button
-              className={`source-pill-item ${
-                sourceType === 'embed2' ? 'active' : ''
-              }`}
-              onClick={() => setSourceType('embed2')}
-            >
-              Nguồn 2 (2Embed)
+              Nguồn 2 (VidSrc)
             </button>
           </div>
         </div>
