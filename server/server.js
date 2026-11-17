@@ -1,4 +1,3 @@
-
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -9,22 +8,22 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  process.env.FRONTEND_URL?.replace(/\/$/, ""),
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: allowedOrigins,
   })
 );
 
 app.use(express.json({ limit: "2mb" }));
 
 const apiKey = process.env.GEMINI_API_KEY;
-
-const ai = apiKey
-  ? new GoogleGenAI({ apiKey })
-  : null;
-
-const MODEL =
-  process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
+const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
 
 // Kiểm tra backend có hoạt động hay không.
 app.get("/api/health", (_req, res) => {
@@ -94,7 +93,6 @@ app.post("/api/chat", async (req, res) => {
     const systemInstruction = `
 Bạn là Cine, trợ lý phim ảnh thân thiện, dễ thương của CineScope.
 Bạn đang trò chuyện bằng tiếng Việt với người dùng.
-
 QUY TẮC:
 1. Trò chuyện tự nhiên, ấm áp, giống một người bạn.
 2. Đọc lịch sử hội thoại để hiểu ngữ cảnh và câu hỏi tiếp nối.
@@ -113,10 +111,8 @@ QUY TẮC:
     const prompt = `
 LỊCH SỬ HỘI THOẠI:
 ${JSON.stringify(validMessages)}
-
 DANH MỤC PHIM CỦA CINESCOPE:
 ${JSON.stringify(catalog)}
-
 Hãy trả lời tin nhắn cuối cùng dựa trên lịch sử và danh mục phim.
 `;
 
@@ -145,13 +141,11 @@ Hãy trả lời tin nhắn cuối cùng dựa trên lịch sử và danh mục 
     });
 
     const rawText = response.text;
-
     if (!rawText) {
       throw new Error("Gemini không trả về nội dung.");
     }
 
     const result = JSON.parse(rawText);
-
     if (typeof result.reply !== "string") {
       throw new Error("Phản hồi Gemini không đúng định dạng.");
     }
@@ -173,7 +167,6 @@ Hãy trả lời tin nhắn cuối cùng dựa trên lịch sử và danh mục 
         const originalMovie = movies.find(
           (movie) => String(movie.id) === id
         );
-
         return originalMovie?.id;
       })
       .filter((id) => id !== undefined);
@@ -184,7 +177,6 @@ Hãy trả lời tin nhắn cuối cùng dựa trên lịch sử và danh mục 
     });
   } catch (error) {
     console.error("Lỗi Gemini API:", error);
-
     return res.status(500).json({
       error:
         "Cine chưa thể kết nối AI. Hãy kiểm tra terminal backend.",
