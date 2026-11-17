@@ -258,11 +258,13 @@ export default function App() {
     setPendingScrollMovieId(movie.id)
   }
 
-  const handleAssistantSubmit = async (
+const handleAssistantSubmit = async (
     prompt: string,
     history: AssistantHistoryMessage[],
   ): Promise<{ reply: string; movies: Movie[] }> => {
-    const response = await fetch('http://localhost:3001/api/chat', {
+    const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
+
+    const response = await fetch(`${apiBaseUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -294,8 +296,8 @@ export default function App() {
 
     const recommendedMovies = Array.isArray(data.movieIds)
       ? data.movieIds
-        .map((id) => movies.find((movie) => movie.id === id))
-        .filter((movie): movie is Movie => Boolean(movie))
+          .map((id) => movies.find((movie) => movie.id === id))
+          .filter((movie): movie is Movie => Boolean(movie))
       : []
 
     return {
