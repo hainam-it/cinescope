@@ -404,6 +404,7 @@ button {
   line-height: 1.5;
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
+  line-clamp: 2;
   -webkit-line-clamp: 2;
 }
 
@@ -559,6 +560,7 @@ button {
   font-weight: 500;
   line-height: 1.95;
   -webkit-box-orient: vertical;
+  line-clamp: 3;
   -webkit-line-clamp: 3;
 }
 
@@ -940,6 +942,7 @@ button {
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   transition: color 180ms ease;
 }
 
@@ -957,6 +960,7 @@ button {
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .save-button {
@@ -1735,6 +1739,7 @@ button {
     font-size: 12px;
     line-height: 1.8;
     -webkit-line-clamp: 3;
+    line-clamp: 3;
   }
 
   .hero-buttons {

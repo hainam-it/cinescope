@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import App from './App'
 import './IntroPage.css'
-const FACEBOOK_URL = 'https://www.facebook.com/link-facebook-cua-ban'
 
 const SHOWCASE_SLIDES = [
   {
