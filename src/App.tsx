@@ -7,7 +7,6 @@ import {
   signOut,
   type User,
 } from 'firebase/auth'
-
 import { auth } from './firebase'
 import movieData from './data/movies.json'
 import MoviePlayer from './components/MoviePlayer'
@@ -20,6 +19,7 @@ type MovieRecord = {
   id: number
   title: string
   releaseDate?: string
+  country?: string
   genres?: string[]
   rating?: number
   popularity?: number
@@ -49,6 +49,13 @@ type Movie = {
 const IMAGE_BASE = 'https://image.tmdb.org/t/p/'
 const FALLBACK = '/images/slider-badag.jpg'
 
+const movieCountryMap = new Map<number, string>()
+for (const item of movieData as MovieRecord[]) {
+  if (item.id && item.country?.trim()) {
+    movieCountryMap.set(item.id, item.country.trim())
+  }
+}
+
 const movies: Movie[] = (movieData as MovieRecord[])
   .map((item) => ({
     id: item.id,
@@ -72,7 +79,12 @@ const movies: Movie[] = (movieData as MovieRecord[])
     directors: item.directors ?? [],
     cast: item.cast ?? [],
   }))
-  .sort((a, b) => b.popularity - a.popularity)
+  .sort((a, b) => {
+    const aIs2026 = a.year === '2026' ? 1 : 0
+    const bIs2026 = b.year === '2026' ? 1 : 0
+    if (aIs2026 !== bIs2026) return bIs2026 - aIs2026
+    return b.popularity - a.popularity
+  })
 
 const featured = movies.slice(0, 6)
 
@@ -81,19 +93,62 @@ type AssistantHistoryMessage = {
   content: string
 }
 
+const MOVIES_PER_PAGE = 48
+
+type PageItem = number | 'ellipsis'
+
+function getPaginationItems(current: number, total: number): PageItem[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, index) => index + 1)
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, 'ellipsis', total]
+  }
+  if (current >= total - 3) {
+    return [1, 'ellipsis', total - 4, total - 3, total - 2, total - 1, total]
+  }
+  return [1, 'ellipsis', current - 1, current, current + 1, 'ellipsis', total]
+}
+
+function getMovieCountry(movie: Movie): string {
+  const explicitCountry = movieCountryMap.get(movie.id)
+  if (explicitCountry) return explicitCountry
+
+  const sample = [movie.title, ...movie.directors, ...movie.cast].join(' ')
+  if (/[\uAC00-\uD7AF]/.test(sample)) return 'Hàn Quốc'
+  if (/[\u3040-\u30FF]/.test(sample)) return 'Nhật Bản'
+
+  const people = [...movie.directors, ...movie.cast]
+  if (
+    people.some((name) =>
+      /^(Kim|Lee|Park|Choi|Jung|Kang|Cho|Yoon|Jang|Lim|Han|Oh|Seo|Shin|Kwon|Hwang|Ahn|Song|Yoo|Hong|Hyun|Bae|Baek|Nam|Moon|Yang|Son|Go|Ryu|Jeon|Ha|Kwak|Sung|Cha|Joo|Woo|Koo|Noh|Sim|Won|Jin|Min|Chae|Byun|Do|Yeom|Eom|Bang|Ma|Gong|Ji|So|Jo|Heo|Im|Seol|Yeo)\s+[A-Z]/i.test(
+        name.trim(),
+      ),
+    )
+  ) {
+    return 'Hàn Quốc'
+  }
+
+  return 'Âu Mỹ'
+}
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
   const [search, setSearch] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
   const [pendingScrollMovieId, setPendingScrollMovieId] =
     useState<number | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [filterOpen, setFilterOpen] = useState(false)
   const [selectedGenre, setSelectedGenre] = useState('')
+  const [selectedCountry, setSelectedCountry] = useState('')
+  const [selectedYear, setSelectedYear] = useState('')
+  const [minRating, setMinRating] = useState('')
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null)
   const [activeHero, setActiveHero] = useState(0)
   const [watchlist, setWatchlist] = useState<number[]>([])
   const [showWatchlist, setShowWatchlist] = useState(false)
   const [isWatching, setIsWatching] = useState(false)
-
   const [accountOpen, setAccountOpen] = useState(false)
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
   const [authName, setAuthName] = useState('')
@@ -109,26 +164,33 @@ export default function App() {
 
   useEffect(() => {
     if (featured.length < 2) return
-
     const timer = window.setInterval(() => {
       setActiveHero((current) => (current + 1) % featured.length)
     }, 5000)
-
     return () => window.clearInterval(timer)
   }, [])
 
   useEffect(() => {
     if (!isWatching || !selectedMovie) return
-
     const frame = window.requestAnimationFrame(() => {
       document.getElementById('movie-watch-page')?.scrollIntoView({
         behavior: 'smooth',
         block: 'start',
       })
     })
-
     return () => window.cancelAnimationFrame(frame)
   }, [isWatching, selectedMovie])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [
+    search,
+    selectedGenre,
+    selectedCountry,
+    selectedYear,
+    minRating,
+    showWatchlist,
+  ])
 
   const heroMovie = featured[activeHero] ?? movies[0]
 
@@ -137,8 +199,33 @@ export default function App() {
     [],
   )
 
+  const allCountries = useMemo(
+    () => [...new Set(movies.map((movie) => getMovieCountry(movie)))].sort(),
+    [],
+  )
+
+  const allYears = useMemo(
+    () =>
+      [
+        ...new Set(
+          movies
+            .map((movie) => movie.year)
+            .filter((year) => /^\d{4}$/.test(year)),
+        ),
+      ].sort((a, b) => Number(b) - Number(a)),
+    [],
+  )
+
+  const activeFilterCount = [
+    selectedGenre,
+    selectedCountry,
+    selectedYear,
+    minRating,
+  ].filter(Boolean).length
+
   const filteredMovies = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('vi')
+    const ratingThreshold = minRating ? Number(minRating) : 0
 
     return movies.filter((movie) => {
       const searchableText = [
@@ -150,9 +237,7 @@ export default function App() {
       ]
         .join(' ')
         .toLocaleLowerCase('vi')
-
       const matchesSearch = !query || searchableText.includes(query)
-
       const matchesGenre =
         !selectedGenre ||
         movie.genres.some((genre) =>
@@ -160,19 +245,36 @@ export default function App() {
             .toLocaleLowerCase('vi')
             .includes(selectedGenre.toLocaleLowerCase('vi')),
         )
-
+      const matchesCountry =
+        !selectedCountry || getMovieCountry(movie) === selectedCountry
+      const matchesYear = !selectedYear || movie.year === selectedYear
+      const matchesRating =
+        !ratingThreshold || movie.rating >= ratingThreshold
       const matchesWatchlist =
         !showWatchlist || watchlist.includes(movie.id)
 
-      return matchesSearch && matchesGenre && matchesWatchlist
+      return (
+        matchesSearch &&
+        matchesGenre &&
+        matchesCountry &&
+        matchesYear &&
+        matchesRating &&
+        matchesWatchlist
+      )
     })
-  }, [search, selectedGenre, showWatchlist, watchlist])
+  }, [
+    search,
+    selectedGenre,
+    selectedCountry,
+    selectedYear,
+    minRating,
+    showWatchlist,
+    watchlist,
+  ])
 
   const searchSuggestions = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('vi')
-
     if (!query) return []
-
     return movies
       .filter((movie) =>
         movie.title.toLocaleLowerCase('vi').includes(query),
@@ -180,7 +282,6 @@ export default function App() {
       .sort((a, b) => {
         const aStarts = a.title.toLocaleLowerCase('vi').startsWith(query)
         const bStarts = b.title.toLocaleLowerCase('vi').startsWith(query)
-
         if (aStarts !== bStarts) return aStarts ? -1 : 1
         return b.popularity - a.popularity
       })
@@ -189,13 +290,15 @@ export default function App() {
 
   useEffect(() => {
     if (pendingScrollMovieId === null) return
-
-    const movieExists = filteredMovies.some(
+    const movieIndex = filteredMovies.findIndex(
       (movie) => movie.id === pendingScrollMovieId,
     )
-
-    if (!movieExists) return
-
+    if (movieIndex === -1) return
+    const targetPage = Math.floor(movieIndex / MOVIES_PER_PAGE) + 1
+    if (currentPage !== targetPage) {
+      setCurrentPage(targetPage)
+      return
+    }
     const frame = window.requestAnimationFrame(() => {
       document
         .getElementById(`movie-card-${pendingScrollMovieId}`)
@@ -203,19 +306,15 @@ export default function App() {
           behavior: 'smooth',
           block: 'center',
         })
-
       setPendingScrollMovieId(null)
     })
-
     return () => window.cancelAnimationFrame(frame)
-  }, [pendingScrollMovieId, filteredMovies])
+  }, [pendingScrollMovieId, filteredMovies, currentPage])
 
   useEffect(() => {
     if (!searchFocused) return
-
     const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
       const target = event.target
-
       if (
         target instanceof Element &&
         !target.closest('.search-container')
@@ -223,10 +322,8 @@ export default function App() {
         setSearchFocused(false)
       }
     }
-
     document.addEventListener('mousedown', handleOutsideClick)
     document.addEventListener('touchstart', handleOutsideClick)
-
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick)
       document.removeEventListener('touchstart', handleOutsideClick)
@@ -251,6 +348,9 @@ export default function App() {
   const handleSelectSuggestion = (movie: Movie) => {
     setSearch(movie.title)
     setSelectedGenre('')
+    setSelectedCountry('')
+    setSelectedYear('')
+    setMinRating('')
     setShowWatchlist(false)
     setSelectedMovie(null)
     setIsWatching(false)
@@ -258,12 +358,11 @@ export default function App() {
     setPendingScrollMovieId(movie.id)
   }
 
-const handleAssistantSubmit = async (
+  const handleAssistantSubmit = async (
     prompt: string,
     history: AssistantHistoryMessage[],
   ): Promise<{ reply: string; movies: Movie[] }> => {
     const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
-
     const response = await fetch(`${apiBaseUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -283,23 +382,19 @@ const handleAssistantSubmit = async (
         })),
       }),
     })
-
     const data = (await response.json()) as {
       reply?: string
       movieIds?: number[]
       error?: string
     }
-
     if (!response.ok) {
       throw new Error(data.error || 'Không thể kết nối CineScope AI.')
     }
-
     const recommendedMovies = Array.isArray(data.movieIds)
       ? data.movieIds
           .map((id) => movies.find((movie) => movie.id === id))
           .filter((movie): movie is Movie => Boolean(movie))
       : []
-
     return {
       reply: data.reply || 'Anh kể thêm một chút nhé, để Cine hiểu hơn.',
       movies: recommendedMovies,
@@ -312,7 +407,6 @@ const handleAssistantSubmit = async (
     event.preventDefault()
     setAuthError('')
     setAuthBusy(true)
-
     try {
       if (authMode === 'register') {
         const credential = await createUserWithEmailAndPassword(
@@ -320,11 +414,9 @@ const handleAssistantSubmit = async (
           authEmail.trim(),
           authPassword,
         )
-
         await updateProfile(credential.user, {
           displayName: authName.trim(),
         })
-
         setUser(credential.user)
       } else {
         await signInWithEmailAndPassword(
@@ -333,12 +425,10 @@ const handleAssistantSubmit = async (
           authPassword,
         )
       }
-
       setAccountOpen(false)
       setAuthPassword('')
     } catch (error) {
       const code = (error as { code?: string }).code
-
       const messages: Record<string, string> = {
         'auth/email-already-in-use': 'Email này đã được đăng ký.',
         'auth/invalid-email': 'Địa chỉ email chưa hợp lệ.',
@@ -350,10 +440,9 @@ const handleAssistantSubmit = async (
         'auth/operation-not-allowed':
           'Hãy bật Email/Password trong Firebase Authentication.',
       }
-
       setAuthError(
         messages[code || ''] ||
-        'Không thể đăng nhập. Anh kiểm tra thông tin nhé.',
+          'Không thể đăng nhập. Anh kiểm tra thông tin nhé.',
       )
     } finally {
       setAuthBusy(false)
@@ -366,16 +455,39 @@ const handleAssistantSubmit = async (
       setAuthError('Anh đăng nhập để xem phim nhé.')
       return
     }
-
     setIsWatching(true)
   }
 
   const closePlayer = () => {
     setIsWatching(false)
-
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     })
+  }
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredMovies.length / MOVIES_PER_PAGE),
+  )
+  const safeCurrentPage = Math.min(currentPage, totalPages)
+
+  const paginatedMovies = useMemo(() => {
+    const startIndex = (safeCurrentPage - 1) * MOVIES_PER_PAGE
+    return filteredMovies.slice(startIndex, startIndex + MOVIES_PER_PAGE)
+  }, [filteredMovies, safeCurrentPage])
+
+  const paginationItems = useMemo(
+    () => getPaginationItems(safeCurrentPage, totalPages),
+    [safeCurrentPage, totalPages],
+  )
+
+  const handlePageChange = (page: number) => {
+    const targetPage = Math.min(totalPages, Math.max(1, page))
+    if (targetPage === safeCurrentPage) return
+    setCurrentPage(targetPage)
+    document
+      .getElementById('movies')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   if (!movies.length) {
@@ -407,11 +519,10 @@ const handleAssistantSubmit = async (
             <small>YOUR MOVIE UNIVERSE</small>
           </span>
         </a>
-
         <nav className="nav-links">
           <button
             className={
-              !selectedGenre && !showWatchlist
+              activeFilterCount === 0 && !showWatchlist
                 ? 'nav-item active'
                 : 'nav-item'
             }
@@ -420,6 +531,9 @@ const handleAssistantSubmit = async (
               setIsWatching(false)
               setShowWatchlist(false)
               setSelectedGenre('')
+              setSelectedCountry('')
+              setSelectedYear('')
+              setMinRating('')
               setSearch('')
               setSearchFocused(false)
               window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -427,7 +541,6 @@ const handleAssistantSubmit = async (
           >
             Trang chủ
           </button>
-
           <button
             className="nav-item"
             onClick={() => {
@@ -441,30 +554,28 @@ const handleAssistantSubmit = async (
           >
             Khám phá
           </button>
-
           <button
             className={showWatchlist ? 'nav-item active' : 'nav-item'}
-
             onClick={() => {
               setSelectedMovie(null)
               setIsWatching(false)
               setShowWatchlist(true)
               setSelectedGenre('')
+              setSelectedCountry('')
+              setSelectedYear('')
+              setMinRating('')
               setSearch('')
               setSearchFocused(false)
-
               window.setTimeout(() => {
                 document
                   .getElementById('movies')
                   ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
               }, 100)
             }}
-
           >
             Danh sách của tôi
           </button>
         </nav>
-
         <div className="nav-actions">
           <div className="search-container">
             <label className="search-field" aria-label="Tìm kiếm phim">
@@ -472,7 +583,6 @@ const handleAssistantSubmit = async (
                 <circle cx="10.8" cy="10.8" r="6.8" />
                 <path d="m16 16 4.5 4.5" />
               </svg>
-
               <input
                 value={search}
                 onFocus={() => setSearchFocused(true)}
@@ -486,9 +596,8 @@ const handleAssistantSubmit = async (
                 onKeyDown={(event) => {
                   if (event.key === 'Escape') {
                     setSearchFocused(false)
-                      ; (event.target as HTMLInputElement).blur()
+                    ;(event.target as HTMLInputElement).blur()
                   }
-
                   if (
                     event.key === 'Enter' &&
                     searchSuggestions.length > 0
@@ -503,7 +612,6 @@ const handleAssistantSubmit = async (
                 aria-expanded={searchFocused && search.trim().length > 0}
                 aria-controls="movie-search-suggestions"
               />
-
               {search && (
                 <button
                   type="button"
@@ -518,7 +626,6 @@ const handleAssistantSubmit = async (
                 </button>
               )}
             </label>
-
             {searchFocused && search.trim() && (
               <div
                 className="search-suggestions"
@@ -543,7 +650,6 @@ const handleAssistantSubmit = async (
                           event.currentTarget.src = FALLBACK
                         }}
                       />
-
                       <span className="search-suggestion-info">
                         <span className="search-suggestion-title">
                           {movie.title}
@@ -567,12 +673,10 @@ const handleAssistantSubmit = async (
               </div>
             )}
           </div>
-
           <button
             className="account-button"
             onClick={() => {
               setSearchFocused(false)
-
               if (user) {
                 void signOut(auth)
               } else {
@@ -586,7 +690,6 @@ const handleAssistantSubmit = async (
           </button>
         </div>
       </header>
-
       {selectedMovie ? (
         <section className="movie-detail-page">
           {!isWatching && (
@@ -598,7 +701,6 @@ const handleAssistantSubmit = async (
                 }}
               >
                 <div className="detail-gradient-overlay" />
-
                 <div className="detail-content-wrapper">
                   <span className="eyebrow">
                     CINESCOPE FEATURED MOVIE
@@ -606,7 +708,6 @@ const handleAssistantSubmit = async (
                   <h1 className="detail-title">
                     {selectedMovie.title}
                   </h1>
-
                   <div className="detail-meta-row">
                     <span className="rating-tag">
                       ★ {selectedMovie.rating.toFixed(1)}
@@ -616,11 +717,9 @@ const handleAssistantSubmit = async (
                       <span>{selectedMovie.runtime} phút</span>
                     )}
                   </div>
-
                   <p className="detail-overview">
                     {selectedMovie.overview}
                   </p>
-
                   <div className="detail-actions">
                     <button
                       className="watch-button"
@@ -628,7 +727,6 @@ const handleAssistantSubmit = async (
                     >
                       ▶ Xem phim ngay
                     </button>
-
                     <button
                       className={
                         watchlist.includes(selectedMovie.id)
@@ -640,7 +738,6 @@ const handleAssistantSubmit = async (
                     >
                       {watchlist.includes(selectedMovie.id) ? '♥' : '♡'}
                     </button>
-
                     <button
                       className="back-to-home-btn"
                       onClick={() => {
@@ -652,20 +749,17 @@ const handleAssistantSubmit = async (
                       Quay lại
                     </button>
                   </div>
-
                   <div className="detail-extra-info">
                     <p>
                       <strong>Thể loại:</strong>{' '}
                       {selectedMovie.genres.join(' · ')}
                     </p>
-
                     {selectedMovie.directors.length > 0 && (
                       <p>
                         <strong>Đạo diễn:</strong>{' '}
                         {selectedMovie.directors.join(', ')}
                       </p>
                     )}
-
                     {selectedMovie.cast.length > 0 && (
                       <p>
                         <strong>Diễn viên:</strong>{' '}
@@ -675,11 +769,9 @@ const handleAssistantSubmit = async (
                   </div>
                 </div>
               </div>
-
               <MovieDetailTabs movie={selectedMovie} user={user} />
             </>
           )}
-
           {isWatching && (
             <div
               id="movie-watch-page"
@@ -696,7 +788,6 @@ const handleAssistantSubmit = async (
                     {selectedMovie.genres.join(' · ')}
                   </p>
                 </div>
-
                 <button
                   className="back-to-home-btn watch-back-button"
                   onClick={closePlayer}
@@ -704,11 +795,7 @@ const handleAssistantSubmit = async (
                   ← Quay lại chi tiết
                 </button>
               </div>
-
-              <MoviePlayer
-                movie={selectedMovie}
-              />
-
+              <MoviePlayer movie={selectedMovie} />
               <section className="watch-recommendations">
                 <div className="section-topline">
                   <div>
@@ -716,7 +803,6 @@ const handleAssistantSubmit = async (
                     <h2>Phim có thể anh sẽ thích</h2>
                   </div>
                 </div>
-
                 <div className="movie-grid">
                   {movies
                     .filter(
@@ -738,7 +824,6 @@ const handleAssistantSubmit = async (
                     ))}
                 </div>
               </section>
-
               <MovieReviews
                 movieId={selectedMovie.id}
                 user={user}
@@ -757,18 +842,15 @@ const handleAssistantSubmit = async (
               }}
             />
             <div className="hero-gradient" />
-
             <div className="hero-copy">
               <p className="eyebrow">
                 <span />
                 CINESCOPE ORIGINALS
               </p>
-
               <h1>{heroMovie.title}</h1>
               <p className="hero-genres">
                 {heroMovie.genres.slice(0, 3).join(' · ')}
               </p>
-
               <div className="hero-tags">
                 <span className="rating-tag">
                   ★ {heroMovie.rating.toFixed(1)}
@@ -778,9 +860,7 @@ const handleAssistantSubmit = async (
                   <span>{heroMovie.runtime} phút</span>
                 )}
               </div>
-
               <p className="hero-overview">{heroMovie.overview}</p>
-
               <div className="hero-buttons">
                 <button
                   className="watch-button"
@@ -788,7 +868,6 @@ const handleAssistantSubmit = async (
                 >
                   ▶ Khám phá phim
                 </button>
-
                 <button
                   className={
                     watchlist.includes(heroMovie.id)
@@ -802,11 +881,9 @@ const handleAssistantSubmit = async (
                 </button>
               </div>
             </div>
-
             <div className="hero-bottom">
               <div className="top-ten">
                 <p className="top-ten-title">NỔI BẬT HÔM NAY</p>
-
                 <div className="hero-thumbnails">
                   {featured.map((movie, index) => (
                     <button
@@ -833,46 +910,6 @@ const handleAssistantSubmit = async (
             </div>
           </section>
 
-          <section className="category-section">
-            <div className="section-topline">
-              <div>
-                <p className="eyebrow">TÌM THEO THỂ LOẠI</p>
-                <h2>Chọn thế giới anh muốn khám phá</h2>
-              </div>
-            </div>
-
-            <div className="genre-pills">
-              <button
-                className={
-                  !selectedGenre ? 'genre-pill active' : 'genre-pill'
-                }
-                onClick={() => setSelectedGenre('')}
-              >
-                Tất cả
-              </button>
-
-              {allGenres.map((genre) => (
-                <button
-                  key={genre}
-                  className={
-                    selectedGenre === genre
-                      ? 'genre-pill active'
-                      : 'genre-pill'
-                  }
-                  onClick={() => {
-                    setSelectedGenre(genre)
-                    setShowWatchlist(false)
-                    document
-                      .getElementById('movies')
-                      ?.scrollIntoView({ behavior: 'smooth' })
-                  }}
-                >
-                  {genre}
-                </button>
-              ))}
-            </div>
-          </section>
-
           <section className="catalog-section" id="movies">
             <div className="section-topline">
               <div>
@@ -880,12 +917,11 @@ const handleAssistantSubmit = async (
                 <h2>
                   {showWatchlist
                     ? 'Danh sách của tôi'
-                    : selectedGenre || search
+                    : activeFilterCount > 0 || search
                       ? 'Kết quả khám phá'
                       : 'Khám phá phim'}
                 </h2>
               </div>
-
               <span className="movie-count">
                 {filteredMovies.length} phim
               </span>
@@ -893,25 +929,53 @@ const handleAssistantSubmit = async (
 
             <div className="catalog-tools">
               <button
+                type="button"
+                className={
+                  filterOpen || activeFilterCount > 0
+                    ? 'watchlist-filter filter-toggle-btn active'
+                    : 'watchlist-filter filter-toggle-btn'
+                }
+                onClick={() => setFilterOpen((current) => !current)}
+                aria-expanded={filterOpen}
+                aria-controls="catalog-filter-panel"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                </svg>
+                <span>Bộ lọc</span>
+                {activeFilterCount > 0 && (
+                  <span className="filter-badge">{activeFilterCount}</span>
+                )}
+              </button>
+
+              <button
+                type="button"
                 className={
                   showWatchlist
                     ? 'watchlist-filter active'
                     : 'watchlist-filter'
                 }
-
                 onClick={() => {
                   setSelectedMovie(null)
                   setIsWatching(false)
                   setShowWatchlist((current) => !current)
                   setSearchFocused(false)
-
                   window.setTimeout(() => {
                     document
                       .getElementById('movies')
                       ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                   }, 100)
                 }}
-
               >
                 {showWatchlist
                   ? '✓ Đang xem phim đã lưu'
@@ -919,18 +983,181 @@ const handleAssistantSubmit = async (
               </button>
             </div>
 
-            {filteredMovies.length > 0 ? (
-              <div className="movie-grid">
-                {filteredMovies.slice(0, 48).map((movie) => (
-                  <MovieCard
-                    key={movie.id}
-                    movie={movie}
-                    saved={watchlist.includes(movie.id)}
-                    onSelect={selectMovie}
-                    onToggleSave={toggleWatchlist}
-                  />
-                ))}
+            {filterOpen && (
+              <div className="filter-panel" id="catalog-filter-panel">
+                <div className="filter-grid">
+                  <label className="filter-field">
+                    <span>Thể loại</span>
+                    <select
+                      value={selectedGenre}
+                      onChange={(event) => {
+                        setSelectedGenre(event.target.value)
+                        setShowWatchlist(false)
+                      }}
+                    >
+                      <option value="">Tất cả thể loại</option>
+                      {allGenres.map((genre) => (
+                        <option key={genre} value={genre}>
+                          {genre}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="filter-field">
+                    <span>Quốc gia</span>
+                    <select
+                      value={selectedCountry}
+                      onChange={(event) => {
+                        setSelectedCountry(event.target.value)
+                        setShowWatchlist(false)
+                      }}
+                    >
+                      <option value="">Tất cả quốc gia</option>
+                      {allCountries.map((country) => (
+                        <option key={country} value={country}>
+                          {country}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="filter-field">
+                    <span>Năm phát hành</span>
+                    <select
+                      value={selectedYear}
+                      onChange={(event) => {
+                        setSelectedYear(event.target.value)
+                        setShowWatchlist(false)
+                      }}
+                    >
+                      <option value="">Tất cả các năm</option>
+                      {allYears.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="filter-field">
+                    <span>Điểm đánh giá</span>
+                    <select
+                      value={minRating}
+                      onChange={(event) => {
+                        setMinRating(event.target.value)
+                        setShowWatchlist(false)
+                      }}
+                    >
+                      <option value="">Tất cả mức điểm</option>
+                      <option value="8">Từ 8.0 ★ trở lên</option>
+                      <option value="7">Từ 7.0 ★ trở lên</option>
+                      <option value="6">Từ 6.0 ★ trở lên</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div className="filter-panel-footer">
+                  <span className="filter-summary">
+                    {activeFilterCount > 0
+                      ? `Đang lọc theo ${activeFilterCount} điều kiện`
+                      : 'Chọn điều kiện để lọc phim'}
+                  </span>
+                  <div className="filter-panel-actions">
+                    {activeFilterCount > 0 && (
+                      <button
+                        type="button"
+                        className="filter-reset-btn"
+                        onClick={() => {
+                          setSelectedGenre('')
+                          setSelectedCountry('')
+                          setSelectedYear('')
+                          setMinRating('')
+                        }}
+                      >
+                        Xóa điều kiện
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="filter-close-btn"
+                      onClick={() => setFilterOpen(false)}
+                    >
+                      Đóng
+                    </button>
+                  </div>
+                </div>
               </div>
+            )}
+
+            {filteredMovies.length > 0 ? (
+              <>
+                <div className="movie-grid">
+                  {paginatedMovies.map((movie) => (
+                    <MovieCard
+                      key={movie.id}
+                      movie={movie}
+                      saved={watchlist.includes(movie.id)}
+                      onSelect={selectMovie}
+                      onToggleSave={toggleWatchlist}
+                    />
+                  ))}
+                </div>
+                {totalPages > 1 && (
+                  <nav
+                    className="pagination-bar"
+                    aria-label="Phân trang danh sách phim"
+                  >
+                    <button
+                      type="button"
+                      className="page-btn page-nav"
+                      onClick={() => handlePageChange(safeCurrentPage - 1)}
+                      disabled={safeCurrentPage === 1}
+                      aria-label="Trang trước"
+                    >
+                      ‹ Trước
+                    </button>
+                    <div className="page-numbers">
+                      {paginationItems.map((item, index) =>
+                        item === 'ellipsis' ? (
+                          <span
+                            key={`ellipsis-${index}`}
+                            className="page-ellipsis"
+                            aria-hidden="true"
+                          >
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            key={item}
+                            type="button"
+                            className={
+                              item === safeCurrentPage
+                                ? 'page-btn active'
+                                : 'page-btn'
+                            }
+                            onClick={() => handlePageChange(item)}
+                            aria-current={
+                              item === safeCurrentPage ? 'page' : undefined
+                            }
+                          >
+                            {item}
+                          </button>
+                        ),
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="page-btn page-nav"
+                      onClick={() => handlePageChange(safeCurrentPage + 1)}
+                      disabled={safeCurrentPage === totalPages}
+                      aria-label="Trang sau"
+                    >
+                      Sau ›
+                    </button>
+                  </nav>
+                )}
+              </>
             ) : (
               <div className="no-results">
                 <span>⌕</span>
@@ -941,6 +1168,9 @@ const handleAssistantSubmit = async (
                   onClick={() => {
                     setSearch('')
                     setSelectedGenre('')
+                    setSelectedCountry('')
+                    setSelectedYear('')
+                    setMinRating('')
                     setShowWatchlist(false)
                     setPendingScrollMovieId(null)
                   }}
@@ -952,12 +1182,10 @@ const handleAssistantSubmit = async (
           </section>
         </>
       )}
-
       <CineScopeBot
         onSubmit={handleAssistantSubmit}
         onSelectMovie={selectMovie}
       />
-
       <footer className="footer">
         <a
           className="logo footer-logo"
@@ -981,7 +1209,6 @@ const handleAssistantSubmit = async (
           certified by TMDB.
         </small>
       </footer>
-
       {accountOpen && !user && (
         <div
           className="modal-backdrop account-backdrop"
@@ -998,7 +1225,6 @@ const handleAssistantSubmit = async (
             >
               ×
             </button>
-
             <div className="auth-brand">
               <span className="logo-symbol">
                 C<span>S</span>
@@ -1007,17 +1233,14 @@ const handleAssistantSubmit = async (
                 CINE<span>SCOPE</span>
               </span>
             </div>
-
             <h2>
               {authMode === 'login'
                 ? 'Chào mừng trở lại'
                 : 'Tạo tài khoản'}
             </h2>
-
             <p className="auth-subtitle">
               Đăng nhập để sử dụng tính năng xem phim.
             </p>
-
             <form className="auth-form" onSubmit={handleAuthSubmit}>
               {authMode === 'register' && (
                 <label>
@@ -1030,7 +1253,6 @@ const handleAssistantSubmit = async (
                   />
                 </label>
               )}
-
               <label>
                 Email
                 <input
@@ -1041,7 +1263,6 @@ const handleAssistantSubmit = async (
                   required
                 />
               </label>
-
               <label>
                 Mật khẩu
                 <input
@@ -1055,9 +1276,7 @@ const handleAssistantSubmit = async (
                   required
                 />
               </label>
-
               {authError && <p className="auth-error">{authError}</p>}
-
               <button
                 className="watch-button auth-submit"
                 type="submit"
@@ -1070,7 +1289,6 @@ const handleAssistantSubmit = async (
                     : 'Tạo tài khoản'}
               </button>
             </form>
-
             <p className="auth-switch">
               {authMode === 'login'
                 ? 'Chưa có tài khoản?'
@@ -1120,22 +1338,18 @@ function MovieCard({
               event.currentTarget.src = FALLBACK
             }}
           />
-
           <div className="poster-overlay">
             <span className="poster-hover-btn">Chi tiết ↗</span>
           </div>
-
           <span className="poster-rating">
             ★ {movie.rating.toFixed(1)}
           </span>
         </div>
-
         <h3>{movie.title}</h3>
         <p>
           {movie.year} · {movie.genres.slice(0, 2).join(', ')}
         </p>
       </button>
-
       <button
         className={saved ? 'save-button saved' : 'save-button'}
         onClick={() => onToggleSave(movie.id)}
